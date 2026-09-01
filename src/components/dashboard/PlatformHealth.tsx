@@ -33,46 +33,82 @@ const PlatformHealth = () => {
   ];
 
   return (
-    <section className="rounded-2xl border border-blue-100 bg-white/80 p-6 shadow-sm backdrop-blur-md">
-      <h2 className="mb-5 text-xl font-semibold text-gray-800">
-        Platform Health
-      </h2>
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Header */}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold tracking-tight text-slate-800">
+          Platform Health
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500">
+          Current status of platform services
+        </p>
+      </div>
+
+      {/* Health Items */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+
         {healthItems.map((item) => (
           <div
             key={item.name}
-            className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
+            className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition hover:border-slate-200 hover:bg-white"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">
-                {item.name}
-              </span>
+
+            {/* Name + Status */}
+            <div className="flex items-center justify-between gap-3">
+
+              <div>
+                <p className="text-sm font-semibold text-slate-700">
+                  {item.name}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-400">
+                  Platform service
+                </p>
+              </div>
 
               {item.type === "status" ? (
-                <span className="rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-600">
-                  {item.status}
-                </span>
+                <div className="flex items-center gap-2">
+
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+
+                  <span className="text-sm font-medium text-green-600">
+                    {item.status}
+                  </span>
+
+                </div>
               ) : (
-                <span className="text-sm font-semibold text-blue-600">
+                <span className="text-sm font-semibold text-slate-700">
                   {item.status}
                 </span>
               )}
+
             </div>
 
+            {/* Usage Bar */}
             {item.type === "usage" && (
-              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                <div
-                  className="h-full rounded-full bg-blue-500 transition-all duration-500"
-                  style={{
-                    width: item.status,
-                  }}
-                />
+              <div className="mt-4">
+
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+
+                  <div
+                    className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                    style={{
+                      width: item.status,
+                    }}
+                  />
+
+                </div>
+
               </div>
             )}
+
           </div>
         ))}
+
       </div>
+
     </section>
   );
 };
