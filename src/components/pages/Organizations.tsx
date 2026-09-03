@@ -1,0 +1,32 @@
+import { type FormEvent, type ReactNode, useMemo, useState } from "react";
+import type { Organization } from "../api/API";
+import { useOrganizationStatus, useOrganizations, useSaveOrganization } from "../hooks/usePortal";
+import { useTenants } from "../hooks/useTenants";
+
+const emptyOrganization = { name: "", code: "", contactName: "", contactEmail: "", country: "India", status: "Active" as const };
+
+const Organizations = () => {
+  const { data: organizations = [], isLoading } = useOrganizations();
+  const { data: tenants = [] } = useTenants();
+  const save = useSaveOrganization();
+  const setStatus = useOrganizationStatus();
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<Partial<Organization> | null>(null);
+  const visible = useMemo(() => organizations.filter((item) => `${item.name} ${item.code}`.toLowerCase().includes(search.toLowerCase())), [organizations, search]);
+
+  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (editing) save.mutate(editing, { onSuccess: () => setEditing(null) }); };
+  return <main className="mx-auto max-w-[1400px] px-6 py-10">
+    <PageTitle title="Organization Management" description="Manage organizations that contain platform tenants" action="+ Add Organization" onAction={() => setEditing(emptyOrganization)} />
+    <section className="mt-8 rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
+      <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search organization name or code" className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-400" />
+      {isLoading ? <p className="py-10 text-center text-slate-500">Loading organizations...</p> : <div className="mt-6 overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b text-slate-500"><th className="p-3">Organization</th><th className="p-3">Contact</th><th className="p-3">Tenants</th><th className="p-3">Status</th><th className="p-3">Actions</th></tr></thead><tbody>{visible.map((item) => <tr key={item.id} className="border-b border-slate-100"><td className="p-3 font-medium text-slate-800">{item.name}<span className="ml-2 text-xs text-slate-400">{item.code}</span></td><td className="p-3 text-slate-600">{item.contactName}<br /><span className="text-xs">{item.contactEmail}</span></td><td className="p-3">{tenants.filter((tenant) => tenant.organizationId === item.id).length}</td><td className="p-3"><Badge value={item.status} /></td><td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => setEditing(item)} className="rounded-lg border px-3 py-2 text-blue-600">Edit</button><button type="button" onClick={() => setStatus.mutate({ id: item.id, status: item.status === "Active" ? "Inactive" : "Active" })} className="rounded-lg border px-3 py-2 text-slate-600">{item.status === "Active" ? "Deactivate" : "Activate"}</button></div></td></tr>)}{!visible.length && <tr><td colSpan={5} className="p-10 text-center text-slate-500">No organizations found.</td></tr>}</tbody></table></div>}
+    </section>
+    {editing && <Modal title={editing.id ? "Edit Organization" : "Create Organization"} onClose={() => setEditing(null)}><form onSubmit={submit} className="grid gap-4 sm:grid-cols-2"><Field label="Organization name" value={editing.name ?? ""} onChange={(value) => setEditing({ ...editing, name: value })} /><Field label="Code" value={editing.code ?? ""} onChange={(value) => setEditing({ ...editing, code: value.toUpperCase() })} /><Field label="Contact name" value={editing.contactName ?? ""} onChange={(value) => setEditing({ ...editing, contactName: value })} /><Field label="Contact email" type="email" value={editing.contactEmail ?? ""} onChange={(value) => setEditing({ ...editing, contactEmail: value })} /><Field label="Country" value={editing.country ?? ""} onChange={(value) => setEditing({ ...editing, country: value })} /><label className="text-sm font-medium text-slate-700">Status<select value={editing.status ?? "Active"} onChange={(event) => setEditing({ ...editing, status: event.target.value as Organization["status"] })} className="mt-1 w-full rounded-lg border p-3"><option>Active</option><option>Inactive</option></select></label><div className="sm:col-span-2 flex justify-end gap-3"><button type="button" onClick={() => setEditing(null)} className="rounded-lg border px-4 py-2">Cancel</button><button disabled={save.isPending} className="rounded-lg bg-blue-600 px-4 py-2 text-white">{save.isPending ? "Saving..." : "Save Organization"}</button></div></form></Modal>}
+  </main>;
+};
+
+export const PageTitle = ({ title, description, action, onAction }: { title: string; description: string; action?: string; onAction?: () => void }) => <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-3xl font-bold text-blue-900">{title}</h1><p className="mt-2 text-slate-500">{description}</p></div>{action && <button type="button" onClick={onAction} className="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white shadow-sm hover:bg-blue-700">{action}</button>}</div>;
+export const Modal = ({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) => <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"><div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-6 flex items-center justify-between"><h2 className="text-xl font-semibold">{title}</h2><button type="button" onClick={onClose} aria-label="Close">✕</button></div>{children}</div></div>;
+export const Field = ({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) => <label className="text-sm font-medium text-slate-700">{label}<input required type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-3 outline-none focus:border-blue-400" /></label>;
+export const Badge = ({ value }: { value: string }) => <span className={`rounded-full px-3 py-1 text-xs font-medium ${value === "Active" || value === "Healthy" ? "bg-green-50 text-green-700" : value === "Inactive" || value === "Expired" ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-700"}`}>{value}</span>;
+export default Organizations;

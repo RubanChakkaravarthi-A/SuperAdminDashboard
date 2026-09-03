@@ -10,6 +10,8 @@ export const useCreateTenant = () => {
       queryClient.invalidateQueries({
         queryKey: ["tenants"],
       });
+      queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 };

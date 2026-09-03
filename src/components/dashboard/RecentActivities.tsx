@@ -1,7 +1,7 @@
-import { useTenants } from "../hooks/useTenants";
+import { useAuditLogs } from "../hooks/usePortal";
 
 const RecentActivities = () => {
-  const { data: tenants, isLoading, isError } = useTenants();
+  const { data: auditLogs = [], isLoading, isError } = useAuditLogs();
 
   if (isLoading) {
     return (
@@ -31,21 +31,7 @@ const RecentActivities = () => {
     );
   }
 
-  const activities =
-    tenants
-      ?.slice()
-      .sort(
-        (a, b) =>
-          new Date(b.created).getTime() -
-          new Date(a.created).getTime()
-      )
-      .slice(0, 5)
-      .map((tenant) => ({
-        id: tenant.id,
-        title: "Tenant created",
-        description: `${tenant.name} was added to the platform`,
-        date: tenant.created,
-      })) ?? [];
+  const activities = auditLogs.slice(0, 5).map((log) => ({ id: log.id, title: log.action, description: log.summary, date: log.created }));
 
   return (
     <section className="rounded-2xl border border-blue-100 bg-white/80 p-6 shadow-sm backdrop-blur-md">

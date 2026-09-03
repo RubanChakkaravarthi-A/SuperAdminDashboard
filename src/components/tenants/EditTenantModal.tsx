@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Tenant } from "../api/API";
 import { useUpdateTenant } from "../hooks/useUpdateTenant";
+import { useOrganizations } from "../hooks/usePortal";
 
 type EditTenantModalProps = {
   tenant: Tenant;
@@ -12,6 +13,7 @@ const EditTenantModal = ({
   onClose,
 }: EditTenantModalProps) => {
   const updateTenant = useUpdateTenant();
+  const { data: organizations = [] } = useOrganizations();
 
   const [name, setName] = useState(tenant.name);
   const [code, setCode] = useState(tenant.code);
@@ -21,6 +23,10 @@ const EditTenantModal = ({
   const [phone, setPhone] = useState(tenant.phone);
 
   const [plan, setPlan] = useState(tenant.plan);
+  const [organizationId, setOrganizationId] = useState(tenant.organizationId ?? "");
+  const [seatLimit, setSeatLimit] = useState(String(tenant.seatLimit ?? 10));
+  const [licenseStatus, setLicenseStatus] = useState(tenant.licenseStatus ?? "Active");
+  const [renewalDate, setRenewalDate] = useState(tenant.renewalDate ?? "");
   const [country, setCountry] = useState(tenant.country);
   const [timezone, setTimezone] = useState(
     tenant.timezone
@@ -43,6 +49,10 @@ const EditTenantModal = ({
     setPhone(tenant.phone);
 
     setPlan(tenant.plan);
+    setOrganizationId(tenant.organizationId ?? "");
+    setSeatLimit(String(tenant.seatLimit ?? 10));
+    setLicenseStatus(tenant.licenseStatus ?? "Active");
+    setRenewalDate(tenant.renewalDate ?? "");
     setCountry(tenant.country);
     setTimezone(tenant.timezone);
 
@@ -65,6 +75,10 @@ const EditTenantModal = ({
           email,
           phone,
           plan,
+          organizationId: organizationId || undefined,
+          seatLimit: Number(seatLimit),
+          licenseStatus: licenseStatus as "Active" | "Expiring" | "Expired",
+          renewalDate,
           country,
           timezone,
           users: Number(users),
@@ -222,6 +236,30 @@ const EditTenantModal = ({
                 Premium
               </option>
             </select>
+          </div>
+
+          {/* Country */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Organization</label>
+            <select value={organizationId} onChange={(event) => setOrganizationId(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+              <option value="">Unassigned organization</option>
+              {organizations.map((organization) => <option key={organization.id} value={organization.id}>{organization.name}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Seat Limit</label>
+            <input type="number" min="1" value={seatLimit} onChange={(event) => setSeatLimit(event.target.value)} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100" required />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">License Status</label>
+            <select value={licenseStatus} onChange={(event) => setLicenseStatus(event.target.value as "Active" | "Expiring" | "Expired")} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"><option>Active</option><option>Expiring</option><option>Expired</option></select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Renewal Date</label>
+            <input type="date" value={renewalDate} onChange={(event) => setRenewalDate(event.target.value)} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
           </div>
 
           {/* Country */}

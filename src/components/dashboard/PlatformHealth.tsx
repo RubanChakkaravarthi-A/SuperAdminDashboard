@@ -1,36 +1,11 @@
+import { useMonitoring } from "../hooks/usePortal";
+
 const PlatformHealth = () => {
-  const healthItems = [
-    {
-      name: "API Gateway",
-      status: "Healthy",
-      type: "status",
-    },
-    {
-      name: "Database",
-      status: "Connected",
-      type: "status",
-    },
-    {
-      name: "Server",
-      status: "Running",
-      type: "status",
-    },
-    {
-      name: "Storage",
-      status: "68%",
-      type: "usage",
-    },
-    {
-      name: "CPU",
-      status: "42%",
-      type: "usage",
-    },
-    {
-      name: "Memory",
-      status: "61%",
-      type: "usage",
-    },
-  ];
+  const { data } = useMonitoring();
+  const healthItems = data ? [
+    ...data.services.map((service) => ({ name: service.name, status: service.status, type: "status" })),
+    ...data.usage.map((usage) => ({ name: usage.name, status: `${usage.value}%`, type: "usage" })),
+  ] : [];
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

@@ -1,0 +1,43 @@
+import { type FormEvent, useEffect, useState } from "react";
+import type { PlatformConfiguration } from "../api/API";
+import { useAuditLogs, useMarkNotificationRead, useMonitoring, useNotifications, usePasswordReset, usePlatformConfiguration, useSavePlatformConfiguration, useUsers } from "../hooks/usePortal";
+import { Badge, Field, PageTitle } from "./Organizations";
+
+export const AuditLogs = () => {
+  const { data: logs = [] } = useAuditLogs();
+  const [filter, setFilter] = useState("");
+  const visible = logs.filter((log) => `${log.action} ${log.targetType} ${log.targetName}`.toLowerCase().includes(filter.toLowerCase()));
+  return <main className="mx-auto max-w-[1400px] px-6 py-10"><PageTitle title="Audit Logs" description="Immutable record of every administrative change" /><section className="mt-8 rounded-2xl border border-blue-100 bg-white p-6 shadow-sm"><input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filter audit activity" className="w-full rounded-xl border p-3" /><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b text-slate-500"><th className="p-3">Action</th><th className="p-3">Target</th><th className="p-3">Summary</th><th className="p-3">Actor</th><th className="p-3">Time</th></tr></thead><tbody>{visible.map((log) => <tr key={log.id} className="border-b border-slate-100"><td className="p-3 font-medium">{log.action}</td><td className="p-3">{log.targetType} · {log.targetName}</td><td className="p-3 text-slate-600">{log.summary}</td><td className="p-3">{log.actor}</td><td className="p-3 text-slate-500">{new Date(log.created).toLocaleString()}</td></tr>)}{!visible.length && <tr><td colSpan={5} className="p-10 text-center text-slate-500">No audit activity yet.</td></tr>}</tbody></table></div></section></main>;
+};
+
+export const Notifications = () => {
+  const { data: notifications = [] } = useNotifications();
+  const markRead = useMarkNotificationRead();
+  return <main className="mx-auto max-w-[1100px] px-6 py-10"><PageTitle title="Notifications" description="In-app operational and administrative updates" /><section className="mt-8 space-y-3">{notifications.map((notification) => <article key={notification.id} className={`rounded-2xl border p-5 shadow-sm ${notification.read ? "border-slate-100 bg-white" : "border-blue-200 bg-blue-50"}`}><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="font-semibold text-slate-800">{notification.title}</h2><p className="mt-1 text-sm text-slate-600">{notification.message}</p><p className="mt-2 text-xs text-slate-400">{new Date(notification.created).toLocaleString()}</p></div><button type="button" onClick={() => markRead.mutate({ id: notification.id, read: !notification.read })} className="rounded-lg border bg-white px-3 py-2 text-sm text-blue-600">Mark {notification.read ? "unread" : "read"}</button></div></article>)}{!notifications.length && <p className="rounded-2xl bg-white p-10 text-center text-slate-500">No notifications yet.</p>}</section></main>;
+};
+
+export const Configuration = () => {
+  const { data: configuration } = usePlatformConfiguration();
+  const save = useSavePlatformConfiguration();
+  const [draft, setDraft] = useState<PlatformConfiguration | null>(null);
+  useEffect(() => { if (configuration) setDraft(configuration); }, [configuration]);
+  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (draft) save.mutate(draft); };
+  if (!draft) return <main className="p-10 text-slate-500">Loading configuration...</main>;
+  return <main className="mx-auto max-w-[1000px] px-6 py-10"><PageTitle title="Platform Configuration" description="Branding, locale, and tenant creation defaults" /><form onSubmit={submit} className="mt-8 rounded-2xl border border-blue-100 bg-white p-6 shadow-sm"><div className="grid gap-5 sm:grid-cols-2"><Field label="Platform name" value={draft.platformName} onChange={(value) => setDraft({ ...draft, platformName: value })} /><Field label="Logo text" value={draft.logoText} onChange={(value) => setDraft({ ...draft, logoText: value })} /><Field label="Default timezone" value={draft.defaultTimezone} onChange={(value) => setDraft({ ...draft, defaultTimezone: value })} /><Field label="Date format" value={draft.dateFormat} onChange={(value) => setDraft({ ...draft, dateFormat: value })} /><Field label="Default plan" value={draft.defaultPlan} onChange={(value) => setDraft({ ...draft, defaultPlan: value })} /><Field label="Tenant code prefix" value={draft.tenantCodePrefix} onChange={(value) => setDraft({ ...draft, tenantCodePrefix: value })} /></div><div className="mt-6 flex justify-end"><button disabled={save.isPending} className="rounded-lg bg-blue-600 px-5 py-3 text-white">{save.isPending ? "Saving..." : "Save Configuration"}</button></div></form></main>;
+};
+
+export const Security = () => {
+  const { data: configuration } = usePlatformConfiguration();
+  const { data: users = [] } = useUsers();
+  const save = useSavePlatformConfiguration();
+  const reset = usePasswordReset();
+  const [timeout, setTimeoutValue] = useState(30);
+  useEffect(() => setTimeoutValue(configuration?.sessionTimeoutMinutes ?? 30), [configuration]);
+  return <main className="mx-auto max-w-[1200px] px-6 py-10"><PageTitle title="Security Controls" description="Administrative security settings; real authentication is intentionally out of scope" /><section className="mt-8 grid gap-6 lg:grid-cols-2"><article className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm"><h2 className="text-xl font-semibold">Session policy</h2><p className="mt-2 text-sm text-slate-500">Set the mock portal session timeout policy.</p><label className="mt-5 block text-sm font-medium">Timeout in minutes<input type="number" min="5" value={timeout} onChange={(event) => setTimeoutValue(Number(event.target.value))} className="mt-1 w-full rounded-lg border p-3" /></label><button type="button" onClick={() => configuration && save.mutate({ ...configuration, sessionTimeoutMinutes: timeout })} className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-white">Save policy</button></article><article className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm"><h2 className="text-xl font-semibold">Password reset requests</h2><p className="mt-2 text-sm text-slate-500">Requests are logged and notified; no email is sent.</p><div className="mt-4 space-y-2">{users.map((user) => <div key={user.id} className="flex items-center justify-between rounded-lg bg-slate-50 p-3"><span className="text-sm">{user.name}</span><div className="flex items-center gap-2"><Badge value={user.status} /><button type="button" disabled={reset.isPending} onClick={() => reset.mutate(user.id)} className="rounded border bg-white px-2 py-1 text-xs text-blue-600">Request reset</button></div></div>)}{!users.length && <p className="text-sm text-slate-500">Create users to manage reset requests.</p>}</div></article></section></main>;
+};
+
+export const Monitoring = () => {
+  const { data } = useMonitoring();
+  if (!data) return <main className="p-10 text-slate-500">Loading monitoring data...</main>;
+  return <main className="mx-auto max-w-[1400px] px-6 py-10"><PageTitle title="Monitoring" description="Mock operational health, resource usage, and incident history" /><section className="mt-8 grid gap-5 md:grid-cols-3">{data.services.map((service) => <article key={service.name} className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm"><div className="flex justify-between"><h2 className="font-semibold">{service.name}</h2><Badge value={service.status} /></div><p className="mt-3 text-sm text-slate-500">{service.detail}</p></article>)}</section><section className="mt-6 rounded-2xl border border-blue-100 bg-white p-6 shadow-sm"><h2 className="text-xl font-semibold">Resource usage</h2><div className="mt-5 grid gap-5 md:grid-cols-3">{data.usage.map((item) => <div key={item.name}><div className="flex justify-between text-sm"><span>{item.name}</span><span className="font-semibold">{item.value}%</span></div><div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-blue-500" style={{ width: `${item.value}%` }} /></div></div>)}</div></section><section className="mt-6 rounded-2xl border border-blue-100 bg-white p-6 shadow-sm"><h2 className="text-xl font-semibold">Incidents</h2><div className="mt-4 space-y-3">{data.incidents.map((incident) => <div key={incident.id} className="flex justify-between rounded-xl bg-slate-50 p-4"><span>{incident.title}</span><span className="text-sm text-slate-500">{incident.status} · {incident.created}</span></div>)}</div></section></main>;
+};

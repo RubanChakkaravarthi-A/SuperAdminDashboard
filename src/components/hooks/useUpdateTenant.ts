@@ -22,6 +22,8 @@ export const useUpdateTenant = () => {
       queryClient.invalidateQueries({
         queryKey: ["tenant", variables.id],
       });
+      queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 };

@@ -1,7 +1,9 @@
 import { useTenants } from "../hooks/useTenants";
+import { useUsers } from "../hooks/usePortal";
 
 const KpiCards = () => {
   const { data: tenants, isLoading, isError } = useTenants();
+  const { data: users = [] } = useUsers();
 
   if (isLoading) {
     return (
@@ -44,13 +46,9 @@ const KpiCards = () => {
       (tenant) => tenant.status === "Inactive"
     ).length ?? 0;
 
-  const totalUsers =
-    tenants?.reduce(
-      (total, tenant) => total + tenant.users,
-      0
-    ) ?? 0;
+  const totalUsers = users.length || tenants?.reduce((total, tenant) => total + tenant.users, 0) || 0;
 
-  const activeLicenses = activeTenants;
+  const activeLicenses = tenants?.filter((tenant) => tenant.status === "Active" && (tenant.licenseStatus ?? "Active") === "Active").length ?? 0;
 
   const cards = [
     {

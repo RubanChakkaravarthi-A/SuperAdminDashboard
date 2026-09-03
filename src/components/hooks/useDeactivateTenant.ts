@@ -15,6 +15,8 @@ export const useDeactivateTenant = () => {
       queryClient.invalidateQueries({
         queryKey: ["tenant", id],
       });
+      queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 };

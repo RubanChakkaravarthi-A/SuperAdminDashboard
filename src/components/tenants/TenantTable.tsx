@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTenants } from "../hooks/useTenants";
 import { useActivateTenant } from "../hooks/useActivateTenant";
 import { useDeactivateTenant } from "../hooks/useDeactivateTenant";
 import { useCreateTenant } from "../hooks/useCreateTenant";
+import { useOrganizations } from "../hooks/usePortal";
 import TenantActions from "./TenantActions";
 import EditTenantModal from "./EditTenantModal";
 import type { Tenant } from "../api/API";
@@ -27,6 +29,7 @@ const TenantTable = ({
   status,
   plan,
 }: TenantTableProps) => {
+  const navigate = useNavigate();
   const {
     data: tenants,
     isLoading,
@@ -36,6 +39,7 @@ const TenantTable = ({
   const activateTenant = useActivateTenant();
   const deactivateTenant = useDeactivateTenant();
   const createTenant = useCreateTenant();
+  const { data: organizations = [] } = useOrganizations();
 
   const [selectedTenant, setSelectedTenant] =
     useState<Tenant | null>(null);
@@ -50,6 +54,7 @@ const TenantTable = ({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [planValue, setPlanValue] = useState("Basic");
+  const [organizationId, setOrganizationId] = useState("");
   const [country, setCountry] = useState("");
   const [timezone, setTimezone] = useState("");
   const [users, setUsers] = useState("0");
@@ -77,20 +82,8 @@ const TenantTable = ({
   };
 
   const handleView = (tenant: Tenant) => {
-  alert(
-    `Tenant: ${tenant.name}\n` +
-      `Code: ${tenant.code}\n` +
-      `Admin: ${tenant.admin}\n` +
-      `Email: ${tenant.email}\n` +
-      `Phone: ${tenant.phone}\n` +
-      `Plan: ${tenant.plan}\n` +
-      `Country: ${tenant.country}\n` +
-      `Time Zone: ${tenant.timezone}\n` +
-      `Users: ${tenant.users}\n` +
-      `Status: ${tenant.status}\n` +
-      `Created: ${tenant.created}`
-  );
-};
+    navigate(`/tenants/${tenant.id}`);
+  };
 
   const handleEdit = (tenant: Tenant) => {
     setSelectedTenant(tenant);
@@ -134,6 +127,7 @@ const TenantTable = ({
       email: email.trim(),
       phone: phone.trim(),
       plan: planValue,
+      organizationId: organizationId || undefined,
       country: country.trim(),
       timezone,
       users: Number(users),
@@ -148,6 +142,7 @@ const TenantTable = ({
         setEmail("");
         setPhone("");
         setPlanValue("Basic");
+        setOrganizationId("");
         setCountry("");
         setTimezone("");
         setUsers("0");
@@ -789,6 +784,17 @@ const TenantTable = ({
                   <option value="Premium">
                     Premium
                   </option>
+                </select>
+              </div>
+
+              {/* Country */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Organization
+                </label>
+                <select value={organizationId} onChange={(event) => setOrganizationId(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+                  <option value="">Unassigned organization</option>
+                  {organizations.map((organization) => <option key={organization.id} value={organization.id}>{organization.name}</option>)}
                 </select>
               </div>
 
