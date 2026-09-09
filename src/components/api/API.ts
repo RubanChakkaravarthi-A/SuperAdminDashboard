@@ -21,9 +21,30 @@ export type Tenant = {
   enabledFeatureIds?: string[];
 };
 
-// No dummy tenants.
-// Tenant will appear only after the user creates one.
-const initialTenants: Tenant[] = [];
+// Small, realistic seed set so the dashboard is meaningful on its first visit.
+const initialTenants: Tenant[] = [
+  {
+    id: "tenant-acme", name: "Acme Technologies", code: "ACME001",
+    admin: "Priya Sharma", email: "priya@acme.example", phone: "+91 98765 43210",
+    plan: "Premium", country: "India", timezone: "Asia/Kolkata", users: 48, organizationId: "org-acme",
+    status: "Active", created: "2026-08-12", licenseStatus: "Active", seatLimit: 75,
+    renewalDate: "2027-08-12", enabledFeatureIds: ["feature-dashboard", "feature-audit", "feature-monitoring"],
+  },
+  {
+    id: "tenant-northstar", name: "Northstar Labs", code: "NSL002",
+    admin: "Arjun Mehta", email: "arjun@northstar.example", phone: "+1 415 555 0182",
+    plan: "Standard", country: "United States", timezone: "America/Los_Angeles", users: 21, organizationId: "org-northstar",
+    status: "Active", created: "2026-08-26", licenseStatus: "Active", seatLimit: 50,
+    renewalDate: "2027-08-26", enabledFeatureIds: ["feature-dashboard", "feature-audit"],
+  },
+  {
+    id: "tenant-brightpath", name: "BrightPath Services", code: "BPS003",
+    admin: "Nila Thomas", email: "nila@brightpath.example", phone: "+971 50 555 0174",
+    plan: "Basic", country: "United Arab Emirates", timezone: "Asia/Dubai", users: 9, organizationId: "org-brightpath",
+    status: "Inactive", created: "2026-09-02", licenseStatus: "Expiring", seatLimit: 10,
+    renewalDate: "2026-09-30", enabledFeatureIds: ["feature-dashboard"],
+  },
+];
 
 const STORAGE_KEY = "mock-tenants";
 
@@ -35,7 +56,14 @@ const getStoredTenants = (): Tenant[] => {
 
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const tenants = JSON.parse(stored) as Tenant[];
+      // Earlier demo versions saved an empty list. Seed only that empty state;
+      // existing tenant records are never replaced.
+      if (tenants.length === 0) {
+        saveTenants(initialTenants);
+        return initialTenants;
+      }
+      return tenants;
     } catch {
       localStorage.removeItem(STORAGE_KEY);
     }
@@ -280,7 +308,21 @@ export type PortalUser = {
   roleIds: string[];
   organizationIds: string[];
   tenantIds: string[];
+  dataScope?: DataScope;
   created: string;
+};
+
+export type DataAccessMode = "All" | "Selected" | "None";
+
+export type DataScope = {
+  mode: DataAccessMode;
+  organizationIds: string[];
+  tenantIds: string[];
+  regions: string[];
+  teams: string[];
+  expiresAt?: string;
+  owner?: string;
+  reason?: string;
 };
 
 export type SubscriptionPlan = {
@@ -338,8 +380,29 @@ export type MonitoringStatus = {
 
 const APP_KEY = "super-admin";
 const keyFor = (name: string) => `${APP_KEY}-${name}`;
+const SESSION_KEY = `${APP_KEY}-demo-session`;
 const entityId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const dateToday = () => new Date().toISOString().slice(0, 10);
+
+export type PortalSession = { email: string; name: string; roleId: string; expiresAt: string };
+
+export const signInDemo = async (email: string, password: string): Promise<PortalSession> => {
+  await delay(300);
+  if (email.trim().toLowerCase() !== "admin@superadmin.com" || password !== "Admin@123") throw new Error("Enter the sample workspace credentials to continue.");
+  const session: PortalSession = { email: "admin@superadmin.com", name: "Administrator", roleId: "role-super-admin", expiresAt: new Date(Date.now() + 30 * 60_000).toISOString() };
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  return session;
+};
+
+export const getActiveDemoSession = (): PortalSession | null => {
+  try {
+    const session = JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? "null") as PortalSession | null;
+    if (!session || new Date(session.expiresAt).getTime() <= Date.now()) { sessionStorage.removeItem(SESSION_KEY); return null; }
+    return session;
+  } catch { sessionStorage.removeItem(SESSION_KEY); return null; }
+};
+
+export const signOutDemo = () => sessionStorage.removeItem(SESSION_KEY);
 
 const readEntity = <T,>(name: string, fallback: T): T => {
   const stored = localStorage.getItem(keyFor(name));
@@ -359,23 +422,20 @@ const writeEntity = <T,>(name: string, value: T) =>
   localStorage.setItem(keyFor(name), JSON.stringify(value));
 
 const allPermissions: Permission[] = [
-  ["organizations", "view"], ["organizations", "manage"],
-  ["tenants", "view"], ["tenants", "manage"],
-  ["users", "view"], ["users", "manage"],
-  ["roles", "view"], ["roles", "manage"],
-  ["licenses", "manage"], ["features", "manage"],
-  ["configuration", "manage"], ["security", "manage"],
-  ["audit", "view"], ["monitoring", "view"],
+  ...["organizations", "tenants", "users", "roles", "licenses", "features"].flatMap((module) =>
+    ["view", "create", "edit", "delete", "export", "approve"].map((action) => [module, action] as const)),
+  ...["configuration", "security"].flatMap((module) => ["view", "edit", "approve"].map((action) => [module, action] as const)),
+  ...["audit", "monitoring", "notifications"].flatMap((module) => ["view", "export"].map((action) => [module, action] as const)),
 ].map(([module, action]) => ({
   key: `${module}.${action}`,
   module,
   action,
-  description: `${action === "view" ? "View" : "Manage"} ${module}`,
+  description: `${action[0].toUpperCase()}${action.slice(1)} ${module}`,
 }));
 
 const systemRoles: Role[] = [
   { id: "role-super-admin", name: "Super Admin", description: "Full platform access", permissionKeys: allPermissions.map((item) => item.key), isSystem: true, created: dateToday() },
-  { id: "role-admin", name: "Admin", description: "Manages organizations, tenants and users", permissionKeys: allPermissions.filter((item) => !["configuration.manage", "security.manage"].includes(item.key)).map((item) => item.key), isSystem: true, created: dateToday() },
+  { id: "role-admin", name: "Admin", description: "Manages organizations, tenants and users", permissionKeys: allPermissions.filter((item) => !item.module.includes("security") && !item.module.includes("configuration")).map((item) => item.key), isSystem: true, created: dateToday() },
   { id: "role-viewer", name: "Viewer", description: "Read-only portal access", permissionKeys: allPermissions.filter((item) => item.action === "view").map((item) => item.key), isSystem: true, created: dateToday() },
 ];
 
@@ -389,6 +449,18 @@ const defaultFeatures: TenantFeature[] = [
   { id: "feature-dashboard", key: "advanced_dashboard", name: "Advanced dashboard", description: "Expanded platform analytics", eligiblePlans: ["Basic", "Standard", "Premium"], active: true },
   { id: "feature-audit", key: "audit_export", name: "Audit exports", description: "Download audit activity", eligiblePlans: ["Standard", "Premium"], active: true },
   { id: "feature-monitoring", key: "monitoring_alerts", name: "Monitoring alerts", description: "Service and usage alerts", eligiblePlans: ["Premium"], active: true },
+];
+
+const defaultOrganizations: Organization[] = [
+  { id: "org-acme", name: "Acme Group", code: "ACME", contactName: "Priya Sharma", contactEmail: "priya@acme.example", country: "India", status: "Active", created: "2026-08-12" },
+  { id: "org-northstar", name: "Northstar Holdings", code: "NST", contactName: "Arjun Mehta", contactEmail: "arjun@northstar.example", country: "United States", status: "Active", created: "2026-08-26" },
+  { id: "org-brightpath", name: "BrightPath Group", code: "BPG", contactName: "Nila Thomas", contactEmail: "nila@brightpath.example", country: "United Arab Emirates", status: "Inactive", created: "2026-09-02" },
+];
+
+const defaultUsers: PortalUser[] = [
+  { id: "user-admin", name: "Super Administrator", email: "admin@superadmin.com", type: "Platform", status: "Active", roleIds: ["role-super-admin"], organizationIds: ["org-acme", "org-northstar", "org-brightpath"], tenantIds: ["tenant-acme", "tenant-northstar", "tenant-brightpath"], created: "2026-08-01" },
+  { id: "user-priya", name: "Priya Sharma", email: "priya@acme.example", type: "Tenant", status: "Active", organizationId: "org-acme", tenantId: "tenant-acme", roleIds: ["role-admin"], organizationIds: ["org-acme"], tenantIds: ["tenant-acme"], created: "2026-08-12" },
+  { id: "user-arjun", name: "Arjun Mehta", email: "arjun@northstar.example", type: "Tenant", status: "Active", organizationId: "org-northstar", tenantId: "tenant-northstar", roleIds: ["role-viewer"], organizationIds: ["org-northstar"], tenantIds: ["tenant-northstar"], created: "2026-08-26" },
 ];
 
 const defaultConfiguration: PlatformConfiguration = {
@@ -412,6 +484,18 @@ const defaultMonitoring: MonitoringStatus = {
   incidents: [{ id: "incident-1", title: "Scheduled maintenance completed", status: "Resolved", created: dateToday() }],
 };
 
+const defaultAuditLogs: AuditLog[] = [
+  { id: "audit-tenant-acme", action: "Tenant created", targetType: "Tenant", targetName: "Acme Technologies", summary: "Acme Technologies was added to the platform", actor: "Administrator", created: "2026-09-08T09:30:00.000Z" },
+  { id: "audit-license-northstar", action: "License renewed", targetType: "Subscription", targetName: "Northstar Labs", summary: "Northstar Labs renewed its Standard subscription", actor: "Administrator", created: "2026-09-07T14:15:00.000Z" },
+  { id: "audit-feature-brightpath", action: "Feature updated", targetType: "Feature", targetName: "BrightPath Services", summary: "Advanced dashboard access was updated", actor: "Administrator", created: "2026-09-06T11:00:00.000Z" },
+];
+
+const defaultNotifications: Notification[] = [
+  { id: "notification-license", title: "License renewal due", message: "BrightPath Services has a license renewal due this month.", read: false, created: "2026-09-08T10:00:00.000Z" },
+  { id: "notification-tenant", title: "Tenant created", message: "Acme Technologies was added to the platform.", read: false, created: "2026-09-08T09:30:00.000Z" },
+  { id: "notification-monitoring", title: "Platform health", message: "All monitored platform services are operating normally.", read: true, created: "2026-09-07T14:00:00.000Z" },
+];
+
 const recordActivity = (action: string, targetType: string, targetName: string, summary: string) => {
   const created = new Date().toISOString();
   const logs = readEntity<AuditLog[]>("audit-logs", []);
@@ -427,7 +511,7 @@ export const getPermissions = async () => {
 
 export const getOrganizations = async (): Promise<Organization[]> => {
   await delay();
-  return readEntity("organizations", []);
+  return readEntity("organizations", defaultOrganizations);
 };
 
 export const saveOrganization = async (input: Partial<Organization>): Promise<Organization> => {
@@ -451,17 +535,25 @@ export const setOrganizationStatus = async (organizationId: string, status: Orga
 
 export const getUsers = async (): Promise<PortalUser[]> => {
   await delay();
-  return readEntity("users", []);
+  return readEntity("users", defaultUsers);
 };
 
 export const saveUser = async (input: Partial<PortalUser>): Promise<PortalUser> => {
   await delay();
-  const entity: PortalUser = {
-    id: input.id ?? entityId(), name: input.name?.trim() ?? "", email: input.email?.trim() ?? "", type: input.type ?? "Platform",
-    status: input.status ?? "Active", organizationId: input.organizationId, tenantId: input.tenantId,
-    roleIds: input.roleIds ?? ["role-viewer"], organizationIds: input.organizationIds ?? [], tenantIds: input.tenantIds ?? [], created: input.created ?? dateToday(),
+  const items = readEntity<PortalUser[]>("users", defaultUsers);
+  const email = input.email?.trim().toLowerCase() ?? "";
+  if (!email) throw new Error("Email is required");
+  if (items.some((item) => item.id !== input.id && item.email.toLowerCase() === email)) throw new Error("A user already exists with this email");
+  const suppliedScope = input.dataScope;
+  const dataScope: DataScope = suppliedScope ?? {
+    mode: (input.organizationIds?.length || input.tenantIds?.length) ? "Selected" : "None",
+    organizationIds: input.organizationIds ?? [], tenantIds: input.tenantIds ?? [], regions: [], teams: [],
   };
-  const items = readEntity<PortalUser[]>("users", []);
+  const entity: PortalUser = {
+    id: input.id ?? entityId(), name: input.name?.trim() ?? "", email, type: input.type ?? "Platform",
+    status: input.status ?? "Active", organizationId: input.organizationId, tenantId: input.tenantId,
+    roleIds: input.roleIds ?? ["role-viewer"], organizationIds: dataScope.organizationIds, tenantIds: dataScope.tenantIds, dataScope, created: input.created ?? dateToday(),
+  };
   writeEntity("users", items.some((item) => item.id === entity.id) ? items.map((item) => item.id === entity.id ? entity : item) : [entity, ...items]);
   recordActivity(input.id ? "User updated" : "User created", "User", entity.name, `${entity.name} was ${input.id ? "updated" : "created"}`);
   return entity;
@@ -501,6 +593,8 @@ export const deleteRole = async (roleId: string) => {
   const role = roles.find((item) => item.id === roleId);
   if (!role) throw new Error("Role not found");
   if (role.isSystem) throw new Error("System roles are protected");
+  const affectedUsers = (await getUsers()).filter((user) => user.roleIds.includes(roleId));
+  if (affectedUsers.length) throw new Error(`Role is assigned to ${affectedUsers.length} user(s). Reassign them before deleting this role.`);
   writeEntity("roles", roles.filter((item) => item.id !== roleId));
   recordActivity("Role deleted", "Role", role.name, `${role.name} was deleted`);
 };
@@ -541,12 +635,26 @@ export const toggleTenantFeature = async (tenantId: string, featureId: string) =
 
 export const getAuditLogs = async (): Promise<AuditLog[]> => {
   await delay();
-  return readEntity("audit-logs", []);
+  return readEntity("audit-logs", defaultAuditLogs);
 };
 
 export const getNotifications = async (): Promise<Notification[]> => {
   await delay();
-  return readEntity("notifications", []);
+  return readEntity("notifications", defaultNotifications);
+};
+
+export const resetDemoWorkspace = async () => {
+  await delay(250);
+  saveTenants(initialTenants);
+  writeEntity("organizations", defaultOrganizations);
+  writeEntity("users", defaultUsers);
+  writeEntity("roles", systemRoles);
+  writeEntity("subscription-plans", defaultPlans);
+  writeEntity("features", defaultFeatures);
+  writeEntity("audit-logs", defaultAuditLogs);
+  writeEntity("notifications", defaultNotifications);
+  writeEntity("platform-configuration", defaultConfiguration);
+  writeEntity("monitoring", defaultMonitoring);
 };
 
 export const markNotificationRead = async (notificationId: string, read = true) => {

@@ -1,58 +1,32 @@
-**Super Admin Dashboard**
+# Super Admin Portal
 
-A frontend Super Admin Dashboard built with React, TypeScript, Vite, Tailwind CSS, and TanStack Query.
+A clean frontend workspace for managing tenants, organizations, users, roles, permissions, licenses, and platform operations.
 
-**Features**
+## Run locally
 
-Super Admin Dashboard with KPI cards
+```bash
+npm install
+npm run dev
+```
 
-Tenant Management
+Open the local URL shown by Vite.
 
-Tenant search and filtering by status and plan
+## Sample login
 
-Tenant sorting and pagination
+- Email: `admin@superadmin.com`
+- Password: `Admin@123`
 
-Create Tenant form with unique tenant code validation
+The portal uses a 30-minute sample session. Use **Reset demo data** to restore the original workspace data.
 
-View, Edit, Activate, and Deactivate tenant actions
+## Included
 
-Platform Health section with API Gateway, Database, Server, Storage, CPU, and Memory status
+- Dashboard with KPIs and attention alerts
+- Tenant, organization, and user management
+- Role permissions and data-scope controls
+- Subscription, feature, security, audit, notification, and monitoring screens
+- Responsive React + TypeScript + Tailwind UI
 
-Responsive and professional UI
+## Important
 
+This is a frontend demo. Data is stored in browser storage. Real authentication, database APIs, MFA, email delivery, payments, and server-side audit logging should be added before production use.
 
-**Tech Stack**
-
-React
-
-TypeScript
-
-Vite
-
-Tailwind CSS
-
-TanStack Query
-
-React Router
-
-
-**Main Concepts Used**
-
-React Hooks such as useState, useEffect, and useMemo
-
-TanStack Query for data fetching and mutations
-
-Component-based architecture
-
-Form handling and client-side validation
-
-Search, filtering, sorting, and pagination
-
-Local Storage for temporary tenant data persistence
-
-
-**Backend Status**
-
-Backend integration is not implemented yet. No backend API specification or API endpoints were provided in the assignment, so tenant data is currently stored and managed using browser Local Storage.
-
-The application is structured so that the mock data layer can be replaced with real backend APIs when the backend is available.

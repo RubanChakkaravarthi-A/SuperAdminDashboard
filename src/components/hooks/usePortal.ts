@@ -3,6 +3,7 @@ import {
   deleteRole, getAuditLogs, getFeatures, getMonitoringStatus, getNotifications,
   getOrganizations, getPermissions, getPlatformConfiguration, getRoles,
   getSubscriptionPlans, getUsers, markNotificationRead, requestPasswordReset,
+  resetDemoWorkspace,
   saveFeature, saveOrganization, savePlatformConfiguration, saveRole,
   saveSubscriptionPlan, saveUser, setOrganizationStatus, setUserStatus,
   toggleTenantFeature,
@@ -40,3 +41,4 @@ export const useSaveFeature = () => usePortalMutation(saveFeature, [["features"]
 export const useToggleTenantFeature = () => usePortalMutation(({ tenantId, featureId }: { tenantId: string; featureId: string }) => toggleTenantFeature(tenantId, featureId), [["tenants"], ["features"], ...auditKeys]);
 export const useSavePlatformConfiguration = () => usePortalMutation(savePlatformConfiguration, [["platform-configuration"], ...auditKeys]);
 export const useMarkNotificationRead = () => usePortalMutation(({ id, read }: { id: string; read?: boolean }) => markNotificationRead(id, read), [["notifications"]]);
+export const useResetDemoWorkspace = () => usePortalMutation(resetDemoWorkspace, [["tenants"], ["organizations"], ["users"], ["roles"], ["subscription-plans"], ["features"], ["audit-logs"], ["notifications"], ["platform-configuration"], ["monitoring"], ["dashboard"]]);

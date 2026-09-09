@@ -1,5 +1,6 @@
 import { useTenants } from "../hooks/useTenants";
 import { useUsers } from "../hooks/usePortal";
+import { Link } from "react-router-dom";
 
 const KpiCards = () => {
   const { data: tenants, isLoading, isError } = useTenants();
@@ -46,7 +47,8 @@ const KpiCards = () => {
       (tenant) => tenant.status === "Inactive"
     ).length ?? 0;
 
-  const totalUsers = users.length || tenants?.reduce((total, tenant) => total + tenant.users, 0) || 0;
+  const tenantUserTotal = tenants?.reduce((total, tenant) => total + tenant.users, 0) ?? 0;
+  const totalUsers = tenantUserTotal || users.length;
 
   const activeLicenses = tenants?.filter((tenant) => tenant.status === "Active" && (tenant.licenseStatus ?? "Active") === "Active").length ?? 0;
 
@@ -54,31 +56,37 @@ const KpiCards = () => {
     {
       title: "Total Tenants",
       value: totalTenants,
+      to: "/tenants",
     },
     {
       title: "Active Tenants",
       value: activeTenants,
+      to: "/tenants",
     },
     {
       title: "Inactive Tenants",
       value: inactiveTenants,
+      to: "/tenants",
     },
     {
       title: "Total Users",
       value: totalUsers.toLocaleString(),
+      to: "/users",
     },
     {
       title: "Active Licenses",
       value: activeLicenses,
+      to: "/subscriptions",
     },
   ];
 
   return (
     <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
       {cards.map((card) => (
-        <div
+        <Link
+          to={card.to}
           key={card.title}
-          className="rounded-2xl border border-blue-100 bg-white/80 p-5 shadow-sm backdrop-blur-md"
+          className="rounded-2xl border border-blue-100 bg-white/80 p-5 shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100"
         >
           <p className="text-sm font-medium text-gray-500">
             {card.title}
@@ -87,7 +95,7 @@ const KpiCards = () => {
           <h2 className="mt-2 text-3xl font-bold text-blue-600">
             {card.value}
           </h2>
-        </div>
+        </Link>
       ))}
     </section>
   );

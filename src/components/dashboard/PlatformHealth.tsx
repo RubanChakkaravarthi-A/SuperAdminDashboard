@@ -1,11 +1,14 @@
 import { useMonitoring } from "../hooks/usePortal";
 
 const PlatformHealth = () => {
-  const { data } = useMonitoring();
+  const { data, isLoading, isError } = useMonitoring();
   const healthItems = data ? [
     ...data.services.map((service) => ({ name: service.name, status: service.status, type: "status" })),
     ...data.usage.map((usage) => ({ name: usage.name, status: `${usage.value}%`, type: "usage" })),
   ] : [];
+
+  if (isLoading) return <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><p className="text-sm text-slate-500">Loading platform health...</p></section>;
+  if (isError) return <section className="rounded-2xl border border-red-100 bg-white p-6 shadow-sm"><p className="text-sm text-red-600">Unable to load platform health data.</p></section>;
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -46,9 +49,9 @@ const PlatformHealth = () => {
               {item.type === "status" ? (
                 <div className="flex items-center gap-2">
 
-                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className={`h-2 w-2 rounded-full ${statusTone(item.status)}`} />
 
-                  <span className="text-sm font-medium text-green-600">
+                  <span className={`text-sm font-medium ${statusTextTone(item.status)}`}>
                     {item.status}
                   </span>
 
@@ -87,5 +90,8 @@ const PlatformHealth = () => {
     </section>
   );
 };
+
+const statusTone = (status: string) => status === "Healthy" ? "bg-emerald-500" : status === "Degraded" ? "bg-amber-500" : "bg-red-500";
+const statusTextTone = (status: string) => status === "Healthy" ? "text-emerald-600" : status === "Degraded" ? "text-amber-600" : "text-red-600";
 
 export default PlatformHealth;
