@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Tenant } from "../api/API";
 import { useUpdateTenant } from "../hooks/useUpdateTenant";
 import { useOrganizations } from "../hooks/usePortal";
+import { useTenants } from "../hooks/useTenants";
 
 type EditTenantModalProps = {
   tenant: Tenant;
@@ -14,6 +15,8 @@ const EditTenantModal = ({
 }: EditTenantModalProps) => {
   const updateTenant = useUpdateTenant();
   const { data: organizations = [] } = useOrganizations();
+  const { data: tenants = [] } = useTenants();
+  const [validationError, setValidationError] = useState("");
 
   const [name, setName] = useState(tenant.name);
   const [code, setCode] = useState(tenant.code);
@@ -64,13 +67,23 @@ const EditTenantModal = ({
     event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
+    const trimmedCode = code.trim().toUpperCase();
+    if (tenants.some((item) => item.id !== tenant.id && item.code.trim().toUpperCase() === trimmedCode)) {
+      setValidationError("Tenant code already exists. Use a unique code.");
+      return;
+    }
+    if (!Number.isFinite(Number(users)) || Number(users) < 0 || Number(users) > Number(seatLimit)) {
+      setValidationError("Used seats must be a valid value between 0 and the seat limit.");
+      return;
+    }
+    setValidationError("");
 
     updateTenant.mutate(
       {
         id: tenant.id,
         tenant: {
           name,
-          code,
+          code: trimmedCode,
           admin,
           email,
           phone,
@@ -95,7 +108,7 @@ const EditTenantModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/40 p-4 backdrop-blur-sm">
-      <div className="my-8 w-full max-w-2xl rounded-2xl border border-blue-100 bg-white p-6 shadow-2xl">
+      <div className="my-8 w-full max-w-4xl rounded-2xl border border-blue-100 bg-white p-6 shadow-2xl sm:p-8">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -120,8 +133,9 @@ const EditTenantModal = ({
         {/* Form */}
         <form
           onSubmit={handleSubmit}
-          className="space-y-5"
+          className="tenant-form grid gap-x-5 gap-y-5 md:grid-cols-2"
         >
+          {validationError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 md:col-span-2">{validationError}</p>}
           {/* Tenant Name */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -404,7 +418,7 @@ const EditTenantModal = ({
           </div>
 
           {/* Buttons */}
-          <div className="flex justify-end gap-3 pt-3">
+          <div className="flex justify-end gap-3 pt-3 md:col-span-2">
             <button
               type="button"
               onClick={onClose}

@@ -35,3 +35,13 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Tenant forms use one compact control rhythm without changing other pages. */
+.tenant-form input:not([type="checkbox"]):not([type="radio"]),
+.tenant-form select {
+  height: 48px;
+}
+
+.tenant-form label {
+  min-width: 0;
+}

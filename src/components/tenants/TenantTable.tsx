@@ -58,9 +58,11 @@ const TenantTable = ({
   const [country, setCountry] = useState("");
   const [timezone, setTimezone] = useState("");
   const [users, setUsers] = useState("0");
+  const [seatLimit, setSeatLimit] = useState("10");
   const [tenantStatus, setTenantStatus] =
     useState<"Active" | "Inactive">("Active");
   const [codeError, setCodeError] = useState("");  
+  const [formError, setFormError] = useState("");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -96,6 +98,7 @@ const TenantTable = ({
   const handleCloseCreate = () => {
   setShowCreateForm(false);
   setCodeError("");
+  setFormError("");
 };
 
   const handleCreateTenant = (
@@ -117,7 +120,13 @@ const TenantTable = ({
     return;
   }
 
+  if (!Number.isFinite(Number(users)) || Number(users) < 0 || Number(users) > Number(seatLimit)) {
+    setFormError("Used seats must be a valid value between 0 and the seat limit.");
+    return;
+  }
+
   setCodeError("");
+  setFormError("");
 
   createTenant.mutate(
     {
@@ -131,6 +140,7 @@ const TenantTable = ({
       country: country.trim(),
       timezone,
       users: Number(users),
+      seatLimit: Number(seatLimit),
       status: tenantStatus,
     },
     {
@@ -146,6 +156,7 @@ const TenantTable = ({
         setCountry("");
         setTimezone("");
         setUsers("0");
+        setSeatLimit("10");
         setTenantStatus("Active");
 
         setShowCreateForm(false);
@@ -628,7 +639,7 @@ const TenantTable = ({
       ========================== */}
       {showCreateForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="my-8 w-full max-w-2xl rounded-2xl border border-blue-100 bg-white p-6 shadow-2xl">
+          <div className="my-8 w-full max-w-4xl rounded-2xl border border-blue-100 bg-white p-6 shadow-2xl sm:p-8">
 
             {/* Modal Header */}
             <div className="mb-6 flex items-center justify-between">
@@ -654,8 +665,9 @@ const TenantTable = ({
             {/* Create Form */}
             <form
               onSubmit={handleCreateTenant}
-              className="space-y-5"
+              className="tenant-form grid gap-x-5 gap-y-5 md:grid-cols-2"
             >
+              {formError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 md:col-span-2">{formError}</p>}
               {/* Tenant Name */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -897,6 +909,21 @@ const TenantTable = ({
               {/* Users */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Seat Limit
+                </label>
+
+                <input
+                  type="number"
+                  min="1"
+                  value={seatLimit}
+                  onChange={(event) => setSeatLimit(event.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
                   Users
                 </label>
 
@@ -940,7 +967,7 @@ const TenantTable = ({
               </div>
 
               {/* Buttons */}
-              <div className="flex justify-end gap-3 pt-3">
+              <div className="flex justify-end gap-3 pt-3 md:col-span-2">
                 <button
                   type="button"
                   onClick={handleCloseCreate}
