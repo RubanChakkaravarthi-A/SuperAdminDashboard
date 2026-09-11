@@ -22,7 +22,7 @@ const TenantDetails = () => {
   const enabledIds = tenant.enabledFeatureIds ?? plan?.featureIds ?? [];
 
   return (
-    <main className="mx-auto max-w-[1400px] px-6 py-10">
+    <main className="page-shell mx-auto max-w-[1400px] px-6 py-10">
       <Link to="/tenants" className="text-sm font-medium text-blue-600 hover:text-blue-700">← Back to tenants</Link>
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div><h1 className="text-3xl font-bold text-blue-900">{tenant.name}</h1><p className="mt-1 text-slate-500">{tenant.code} · {tenant.status}</p></div>

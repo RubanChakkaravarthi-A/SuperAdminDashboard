@@ -1,4 +1,8 @@
 @import "tailwindcss";
+
+html {
+  background: #f8fafc;
+}
 :root {
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -18,7 +22,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
+  background: #f8fafc;
 }
 
 button,
@@ -29,6 +33,34 @@ select {
 
 button {
   cursor: pointer;
+  min-height: 40px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button,
+input,
+select,
+textarea,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  min-height: 44px;
+}
+
+textarea {
+  min-height: 96px;
+}
+
+:focus-visible {
+  outline: 3px solid rgb(96 165 250 / 0.45);
+  outline-offset: 2px;
 }
 
 a {
@@ -44,4 +76,20 @@ a {
 
 .tenant-form label {
   min-width: 0;
+}
+
+@media (max-width: 639px) {
+  .page-shell {
+    padding: 1.5rem 1rem;
+  }
+
+  .page-title {
+    font-size: 1.75rem;
+    line-height: 2.1rem;
+  }
+
+  .responsive-table {
+    margin-inline: -0.25rem;
+    padding-bottom: 0.25rem;
+  }
 }

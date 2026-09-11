@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 
 const Dashboard = () => {
   return (
-    <main className="mx-auto max-w-[1400px] px-6 py-10">
+    <main className="page-shell mx-auto max-w-[1400px] px-6 py-10">
       <div className="mb-10">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Platform overview</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">Welcome back, Administrator</h1>

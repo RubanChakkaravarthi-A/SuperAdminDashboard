@@ -8,8 +8,8 @@ const TenantManagement = () => {
   const [plan, setPlan] = useState("");
 
   return (
-    <main className="mx-auto max-w-[1400px] px-6 py-10">
-      <h1 className="mb-10 text-3xl font-bold text-blue-900">
+    <main className="page-shell mx-auto max-w-[1400px] px-6 py-10">
+      <h1 className="page-title mb-8 text-3xl font-bold tracking-tight text-slate-900">
         Tenant Management
       </h1>
 

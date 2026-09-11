@@ -1,5 +1,5 @@
 import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNotifications, useResetDemoWorkspace } from "./components/hooks/usePortal";
 import { getActiveDemoSession, signOutDemo } from "./components/api/API";
 import { ConfirmDialog, DemoWorkspaceBanner } from "./components/ui/Feedback";
@@ -16,6 +16,13 @@ import { DataPermissions, PermissionManagement } from "./components/pages/Access
 
 function App() {
   const [authenticated, setAuthenticated] = useState(() => Boolean(getActiveDemoSession()));
+  useEffect(() => {
+    if (!authenticated) return;
+    const checkSession = () => setAuthenticated(Boolean(getActiveDemoSession()));
+    checkSession();
+    const interval = window.setInterval(checkSession, 30_000);
+    return () => window.clearInterval(interval);
+  }, [authenticated]);
   return (
     <Routes>
       <Route path="/" element={authenticated ? <Navigate to="/dashboard" replace /> : <Login onAuthenticated={() => setAuthenticated(true)} />} />
@@ -31,16 +38,16 @@ function PortalLayout({ onLogout }: { onLogout: () => void }) {
   const reset = useResetDemoWorkspace();
   const logout = () => { signOutDemo(); onLogout(); navigate("/", { replace: true }); };
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800">
       <DemoWorkspaceBanner onReset={() => setResetConfirmationOpen(true)} isResetting={reset.isPending} />
-      <div className="flex min-h-screen">
+      <div className="flex min-h-0 min-w-0 flex-1">
 
         {isNavigationOpen && <button aria-label="Close navigation" className="fixed inset-0 z-30 bg-slate-950/20 lg:hidden" onClick={() => setNavigationOpen(false)} type="button" />}
 
         {/* =========================
             SIDEBAR
         ========================== */}
-        <aside className={`fixed left-0 top-0 z-40 flex h-screen w-72 flex-col border-r border-slate-200 bg-white shadow-[8px_0_30px_rgba(15,23,42,0.03)] transition-transform duration-200 ${isNavigationOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+        <aside aria-label="Primary navigation" className={`fixed inset-y-0 left-0 z-40 flex w-[17.5rem] flex-col border-r border-slate-200 bg-white shadow-[8px_0_30px_rgba(15,23,42,0.08)] transition-transform duration-200 ${isNavigationOpen ? "translate-x-0" : "-translate-x-full"} lg:sticky lg:top-0 lg:h-[calc(100vh-41px)] lg:translate-x-0 lg:shadow-none`}>
 
           {/* Brand */}
           <div className="border-b border-slate-200 px-6 py-5">
@@ -117,17 +124,17 @@ function PortalLayout({ onLogout }: { onLogout: () => void }) {
         {/* =========================
             MAIN CONTENT
         ========================== */}
-        <div className="ml-0 flex min-h-screen flex-1 flex-col lg:ml-72">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
 
           {/* =========================
               TOP HEADER
           ========================== */}
           <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
 
-            <div className="flex h-[76px] items-center justify-between px-4 sm:px-8">
+            <div className="flex min-h-[68px] items-center justify-between px-4 sm:px-6 lg:px-8">
 
               {/* Header Logo + Title */}
-              <div className="flex items-center gap-3"><button aria-label="Open navigation" className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden" onClick={() => setNavigationOpen(true)} type="button"><span aria-hidden="true" className="text-lg">☰</span></button><div><p className="text-sm font-semibold text-slate-900">Super Admin Portal</p><p className="mt-0.5 hidden text-xs text-slate-500 sm:block">Platform management workspace</p></div></div>
+              <div className="flex min-w-0 items-center gap-3"><button aria-label="Open navigation" aria-expanded={isNavigationOpen} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden" onClick={() => setNavigationOpen(true)} type="button"><span aria-hidden="true" className="text-lg">☰</span></button><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-900">Super Admin Portal</p><p className="mt-0.5 hidden text-xs text-slate-500 sm:block">Platform management workspace</p></div></div>
 
               {/* Administrator */}
               <div className="flex items-center gap-3">

@@ -207,9 +207,9 @@ export const activateTenant = async (
   id: string
 ): Promise<Tenant | undefined> => {
   await delay();
-
   const tenants = getStoredTenants();
-
+  const existing = tenants.find((tenant) => tenant.id === id);
+  if (!existing) throw new Error("Tenant not found");
   const updatedTenants = tenants.map(
     (tenant) =>
       tenant.id === id
@@ -221,10 +221,11 @@ export const activateTenant = async (
   );
 
   saveTenants(updatedTenants);
-
-  return updatedTenants.find(
+  const activated = updatedTenants.find(
     (tenant) => tenant.id === id
   );
+  recordActivity("Tenant activated", "Tenant", existing.name, `${existing.name} was activated`);
+  return activated;
 };
 
 // Deactivate tenant
@@ -232,9 +233,9 @@ export const deactivateTenant = async (
   id: string
 ): Promise<Tenant | undefined> => {
   await delay();
-
   const tenants = getStoredTenants();
-
+  const existing = tenants.find((tenant) => tenant.id === id);
+  if (!existing) throw new Error("Tenant not found");
   const updatedTenants = tenants.map(
     (tenant) =>
       tenant.id === id
@@ -246,10 +247,11 @@ export const deactivateTenant = async (
   );
 
   saveTenants(updatedTenants);
-
-  return updatedTenants.find(
+  const deactivated = updatedTenants.find(
     (tenant) => tenant.id === id
   );
+  recordActivity("Tenant deactivated", "Tenant", existing.name, `${existing.name} was deactivated`);
+  return deactivated;
 };
 
 // Get tenant stats
@@ -389,7 +391,9 @@ export type PortalSession = { email: string; name: string; roleId: string; expir
 export const signInDemo = async (email: string, password: string): Promise<PortalSession> => {
   await delay(300);
   if (email.trim().toLowerCase() !== "admin@superadmin.com" || password !== "Admin@123") throw new Error("Enter the sample workspace credentials to continue.");
-  const session: PortalSession = { email: "admin@superadmin.com", name: "Administrator", roleId: "role-super-admin", expiresAt: new Date(Date.now() + 30 * 60_000).toISOString() };
+  const configuration = readEntity("platform-configuration", defaultConfiguration);
+  const timeoutMinutes = Math.max(5, Number(configuration.sessionTimeoutMinutes) || 30);
+  const session: PortalSession = { email: "admin@superadmin.com", name: "Administrator", roleId: "role-super-admin", expiresAt: new Date(Date.now() + timeoutMinutes * 60_000).toISOString() };
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   return session;
 };
@@ -522,6 +526,8 @@ export const saveOrganization = async (input: Partial<Organization>): Promise<Or
     status: input.status ?? "Active", created: input.created ?? dateToday(),
   };
   const items = readEntity<Organization[]>("organizations", []);
+  if (!entity.name || !entity.code || !entity.contactName || !entity.contactEmail) throw new Error("Complete all required organization fields");
+  if (items.some((item) => item.id !== entity.id && item.code.toLowerCase() === entity.code.toLowerCase())) throw new Error("An organization already uses this code");
   writeEntity("organizations", items.some((item) => item.id === entity.id) ? items.map((item) => item.id === entity.id ? entity : item) : [entity, ...items]);
   recordActivity(input.id ? "Organization updated" : "Organization created", "Organization", entity.name, `${entity.name} was ${input.id ? "updated" : "created"}`);
   return entity;
@@ -549,6 +555,11 @@ export const saveUser = async (input: Partial<PortalUser>): Promise<PortalUser> 
     mode: (input.organizationIds?.length || input.tenantIds?.length) ? "Selected" : "None",
     organizationIds: input.organizationIds ?? [], tenantIds: input.tenantIds ?? [], regions: [], teams: [],
   };
+  if (!input.name?.trim()) throw new Error("User name is required");
+  if (dataScope.mode === "Selected" && !dataScope.organizationIds.length && !dataScope.tenantIds.length) throw new Error("Select at least one organization or tenant for selected access");
+  const [organizations, tenants, roles] = await Promise.all([getOrganizations(), getTenants(), getRoles()]);
+  if (dataScope.organizationIds.some((id) => !organizations.some((organization) => organization.id === id)) || dataScope.tenantIds.some((id) => !tenants.some((tenant) => tenant.id === id))) throw new Error("Data access includes a record that no longer exists");
+  if ((input.roleIds ?? []).some((id) => !roles.some((role) => role.id === id))) throw new Error("A selected role no longer exists");
   const entity: PortalUser = {
     id: input.id ?? entityId(), name: input.name?.trim() ?? "", email, type: input.type ?? "Platform",
     status: input.status ?? "Active", organizationId: input.organizationId, tenantId: input.tenantId,
@@ -583,6 +594,9 @@ export const saveRole = async (input: Partial<Role>): Promise<Role> => {
   const current = input.id ? roles.find((role) => role.id === input.id) : undefined;
   if (current?.isSystem) throw new Error("System roles are protected");
   const entity: Role = { id: input.id ?? entityId(), name: input.name?.trim() ?? "", description: input.description?.trim() ?? "", permissionKeys: input.permissionKeys ?? [], isSystem: false, created: input.created ?? dateToday() };
+  if (!entity.name || !entity.description) throw new Error("Role name and description are required");
+  if (roles.some((role) => role.id !== entity.id && role.name.toLowerCase() === entity.name.toLowerCase())) throw new Error("A role already uses this name");
+  if (entity.permissionKeys.some((key) => !allPermissions.some((permission) => permission.key === key))) throw new Error("A selected permission no longer exists");
   writeEntity("roles", current ? roles.map((role) => role.id === entity.id ? entity : role) : [entity, ...roles]);
   recordActivity(current ? "Role updated" : "Role created", "Role", entity.name, `${entity.name} was ${current ? "updated" : "created"}`);
   return entity;
@@ -608,6 +622,10 @@ export const saveSubscriptionPlan = async (input: Partial<SubscriptionPlan>): Pr
   await delay();
   const entity: SubscriptionPlan = { id: input.id ?? entityId(), name: input.name?.trim() ?? "", priceLabel: input.priceLabel?.trim() ?? "", seatLimit: input.seatLimit ?? 1, featureIds: input.featureIds ?? [], active: input.active ?? true };
   const items = readEntity("subscription-plans", defaultPlans);
+  if (!entity.name || !entity.priceLabel || !Number.isInteger(entity.seatLimit) || entity.seatLimit < 1) throw new Error("Enter a plan name, price, and whole-number seat limit of at least 1");
+  if (items.some((item) => item.id !== entity.id && item.name.toLowerCase() === entity.name.toLowerCase())) throw new Error("A subscription plan already uses this name");
+  const features = await getFeatures();
+  if (entity.featureIds.some((id) => !features.some((feature) => feature.id === id))) throw new Error("An included feature no longer exists");
   writeEntity("subscription-plans", items.some((item) => item.id === entity.id) ? items.map((item) => item.id === entity.id ? entity : item) : [entity, ...items]);
   recordActivity(input.id ? "Subscription plan updated" : "Subscription plan created", "Subscription plan", entity.name, `${entity.name} was ${input.id ? "updated" : "created"}`);
   return entity;
@@ -622,6 +640,10 @@ export const saveFeature = async (input: Partial<TenantFeature>): Promise<Tenant
   await delay();
   const entity: TenantFeature = { id: input.id ?? entityId(), key: input.key?.trim().toLowerCase().replaceAll(" ", "_") ?? "", name: input.name?.trim() ?? "", description: input.description?.trim() ?? "", eligiblePlans: input.eligiblePlans ?? [], active: input.active ?? true };
   const items = readEntity("features", defaultFeatures);
+  if (!entity.name || !entity.key || !entity.description || !entity.eligiblePlans.length) throw new Error("Complete feature details and select at least one eligible plan");
+  if (items.some((item) => item.id !== entity.id && item.key === entity.key)) throw new Error("A feature already uses this key");
+  const plans = await getSubscriptionPlans();
+  if (entity.eligiblePlans.some((name) => !plans.some((plan) => plan.name === name))) throw new Error("An eligible plan no longer exists");
   writeEntity("features", items.some((item) => item.id === entity.id) ? items.map((item) => item.id === entity.id ? entity : item) : [entity, ...items]);
   recordActivity(input.id ? "Feature updated" : "Feature created", "Feature", entity.name, `${entity.name} was ${input.id ? "updated" : "created"}`);
   return entity;
@@ -629,6 +651,10 @@ export const saveFeature = async (input: Partial<TenantFeature>): Promise<Tenant
 
 export const toggleTenantFeature = async (tenantId: string, featureId: string) => {
   const tenant = await getTenant(tenantId);
+  const feature = (await getFeatures()).find((item) => item.id === featureId);
+  if (!feature) throw new Error("Feature not found");
+  if (!feature.active) throw new Error("Inactive features cannot be enabled");
+  if (!feature.eligiblePlans.includes(tenant.plan)) throw new Error("This feature is not available on the tenant’s plan");
   const featureIds = tenant.enabledFeatureIds ?? [];
   return updateTenant(tenantId, { enabledFeatureIds: featureIds.includes(featureId) ? featureIds.filter((item) => item !== featureId) : [...featureIds, featureId] });
 };
